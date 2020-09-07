@@ -31,9 +31,8 @@ Github地址：https://github.com/Fenghaze/yolov1
 
 - 输出tensor：[n，7，7，30]
 
-- 模型参数量与计算量
+  
 
-  ![](./assets/yolov1模型计算量.png)
 
 # YOLOv1损失函数
 
@@ -183,10 +182,6 @@ def forward(self, pred_tensor, target_tensor):
 ## 制作训练标签
 
 ![](./assets/yolov1图例.png)
-
-<center>
-	<small>图片摘自https://blog.csdn.net/qq_43602882/article/details/105910176</small>
-</center>
 
 ==标签：tensor[S, S, 30]，初始化为0；制作标签时，仅对有对象的网格赋值==
 
@@ -745,9 +740,8 @@ Github地址：https://github.com/Fenghaze/yolov3
 - Darknet53的前面的52层（没有全连接层），大量使用残差网络的skip connection，并且为了降低池化带来的梯度负面效果，没有使用池化层，使用的是stride=2的卷积来进行降采样；为了加强算法对小目标检测的精确度，在多个scale的feature map上进行检测，共252层
 - 输入tensor：[n，3，416，416]
 - 输出三种尺度的tensor：[n，13，13，75]，[n，26，26，75]，[n，52，52，75]
-- 模型计算量以及参数量
 
-![](./assets/yolov3模型计算量.png)
+  
 
 # 使用YOLOv3训练VOC数据集
 
@@ -918,35 +912,97 @@ def convert(size, box):
 
 **多图组合：**
 
-- CutMix：对两张图片进行拼接变为一张新的图片，然后将拼接好了的图片传入到神经网络中去学习
-- Mosaic：参考了CutMix数据增强方式, 是CutMix数据增强方法的改进版。利用四张图片，对四张图片进行拼接，每一张图片都有其对应的框框，将四张图片拼接之后就获得一张新的图片，同时也获得这张图片对应的框框，然后将这样一张新的图片传入到神经网络当中去学习，相当于一下子传入四张图片进行学习了
+- CutMix：对2张图片进行拼接变为一张新的图片，然后将拼接好了的图片传入到神经网络中去学习
+- Mosaic：是CutMix数据增强方法的改进版。随机缩放、随机裁剪、随机排布的方式对4张图片进行拼接，每一张图片都有其对应的框框，将四张图片拼接之后就获得一张新的图片，同时也获得这张图片对应的框框，然后将这样一张新的图片传入到神经网络当中去学习，相当于一下子传入四张图片进行学习了
 
+![](./assets/augementaions.jpg)
 
+![](./assets/1251718-20200430100833739-1115717146.png)
+
+Mosaic实现步骤：
+
+- 1、每次读取4张图片
+- 2、分别对4张图片进行随机缩放、翻转、色域变化，并按照4个位置摆放
+- 3、最后将图片和对应的bbox进行组合得到一张图片
+
+优点：
+
+1. **丰富数据集：**随机使用**4张图片**，随机缩放，再随机分布进行拼接，大大丰富了检测数据集，特别是随机缩放增加了很多小目标，让网络的鲁棒性更好
+2. **减少GPU：**Mosaic增强训练时，可以直接计算4张图片的数据，使得Mini-batch大小并不需要很大，一个GPU就可以达到比较好的效果
 
 # YOLOv4网络结构
 
-![](https://img-blog.csdnimg.cn/20200806234945238.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L25hbjM1NTY1NTYwMA==,size_16,color_FFFFFF,t_70#pic_center)
+![](/assets/yolov4网络结构.png)
 
 
 
-YOLOv4模型由以下部分组成：
+YOLOv4模型由以下部分组成，共161层：
 
-- BackBone：**CSPDarknet53**（CSPNet+Darknet53，**作用**：**增强CNN的学习能力，能够在轻量化的同时保持准确性、降低计算瓶颈、降低内存成本**）
-- Neck的附加模块：**SPP**（Spatial Pyramid Pooling ，空间金字塔池化，**作用**：**增加网络的感受野**）
+- BackBone：**CSPDarknet53**（CSPNet+Darknet53）
+- Neck的附加模块：**SPP**（Spatial Pyramid Pooling ，空间金字塔池化）
 - Neck的特征融合模块：**PANet**（作用：进行上采样操作）
-- Head：**YOLOv3**
+- Head(Prediction)：输出三个不同尺度的预测，与YOLOv3类似
 - 输入tensor：[n，3，608，608]
-- 输出三种尺度的tensor：[n，76，76，255]，[n，38，38，255]，[n，19，19，255]
+- 输出三种尺度的tensor：
 
-- 模型计算量以及参数量
+![](./assets/yolov4三阶段输出.png)
 
-![](./assets/yolov4模型计算量.png)
+
+
+## CSPDarknet53
+
+### CSPNet
+
+跨阶段局部网络（Cross Stage Partial Network）来解决以往工作中需要大量推理计算的问题，可以与ResNet, ResNeXt, DenseNet 等网络结合使用，主要目的是使这个架构能够实现更丰富的梯度组合，同时减少计算量
+
+**作用**：**增强CNN的学习能力，能够在轻量化的同时保持准确性、降低计算瓶颈、降低内存成本**
+
+<img src="./assets/CSPNet.png" style="zoom:67%;" />
+
+CSPNet将feature map拆成两个部分，一部分进行卷积操作，另一部分和上一部分卷积操作的结果进行concate，CSPNet有多种特征融合方式，上图为在ResNet上加上CSPNet后的结构
+
+<hr>
+
+**CSPDarknet53**是在Darknet53的每个大残差块上结合CSPNet，在Darknet53上总共有5个残差块，结合了5个CSPNet，下图为第一个残差块与CSPNet结合的结构
+
+<img src="./assets/CSPDarknet.png"  />
+
+
+
+## SPP
+
+SPP全称为Spatial Pyramid Pooling ，空间金字塔池化，为了解决CNN输入图像大小必须固定的问题，使用不同的size，stride，对全连接层前的卷积层进行不同池化大小的pooling，然后拼接，这样最终的输出一定是（p1xp1+p2xp2+…）*channels, 所以对输入尺寸没有了要求
+
+<img src="./assets/SPPNet.png" style="zoom:80%;" />
+
+从下往上看:
+
+- 首先是输入层(input image)，其大小可以是任意的
+- 进行卷积运算，到最后一个卷积层(图中是conv5)输出得到该层的特征映射(feature maps)，其大小也是任意的
+
+然后进入SPP层
+
+- 先将从conv5得到的特征映射分成16份，另外**16X256**中的256表示的是channel，即SPP对每一层都分成16份
+
+- 中间的4个绿色小格子和右边1个灰色大格子也同理，即将特征映射分别分成**4X256**和**1X256**份
+
+那么将特征映射分成若干等分做池化操作，一般选择**MAX Pooling**，即对每一份进行最大池化。
+
+我们看上图，通过SPP层，特征映射被转化成了**16X256+4X256+1X256 = 21X256**的矩阵，在送入全连接时可以扩展为一维矩阵，即**1X10752**，所以第一个全连接层的参数就可以设置成10752了，这样也就解决了输入数据大小任意的问题
+
+
+
+SPP网络用在YOLOv4中是对layer107进行 5×5 、 9×9、 13×13的最大池化，完成池化后，进行拼接，连接成一个特征图并通过 1×1降维到512个通道
+
+**采用SPP模块的方式，比单纯的使用k*k最大池化的方式，更有效的增加主干特征的接收范围（扩大感受野），显著的分离了最重要的上下文特征。**
+
+
 
 # YOLOv4损失函数
 
-YOLOv4中计算了以下4种损失：
+YOLOv4中计算了CIOU损失：
 
-- IOU损失：1与预测框A和真实框B之间交并比的差值，只考虑两个框之间的面积
+- IOU损失：1与预测框A和真实框B之间交并比的差值，只考虑两个框**重叠的面积**
 
 ![](https://www.zhihu.com/equation?tex=L_%7BIOU%7D%3D1-IOU%28A%2CB%29)
 
@@ -954,7 +1010,7 @@ YOLOv4中计算了以下4种损失：
 
 ![](https://www.zhihu.com/equation?tex=L_%7BDIOU%7D%3D1-IOU%28A%2CB%29%2B%5Crho%5E%7B2%7D%28A_%7Bctr%7D%2CB_%7Bctr%7D%29%2Fc%5E%7B2%7D)
 
-- CIOU损失：考虑到了三个**几何因素**，分别为（1）重叠面积（2）中心点距离（3）长宽比
+- CIOU损失：考虑到了三个**几何因素**，分别为（1）重叠面积（2）中心点距离（3）长宽比，使得预测框回归的**速度和精度**更高一些
 
 ![](https://www.zhihu.com/equation?tex=L_%7BCIOU%7D%3D1-IOU%28A%2CB%29%2B%5Crho%5E%7B2%7D%28A_%7Bctr%7D%2CB_%7Bctr%7D%29%2Fc%5E%7B2%7D%2B%5Calpha.v)
 
@@ -1023,6 +1079,12 @@ def box_ciou(b1, b2):
 
 
 
+YOLOv4损失函数由位置损失、置信度损失和类别损失组成，其中位置损失是用ciou值来计算的
+
+<img src="./assets/yolov4损失函数.png" style="zoom: 80%;" />
+
+
+
 # YOLOv4后处理
 
 YOLOv4中采用了DIoU-NMS非极值抑制方法进行后处理
@@ -1033,9 +1095,11 @@ NMS是目标检测中必备的后处理步骤，目的是用来去除重复框�
 
 但是在实际应用场景中，当两个不同物体挨得很近时，由于IOU值比较大，往往经过NMS处理后，只剩下一个检测框，这样导致漏检的错误情况发生。
 
-基于此，==DIOU-NMS就不仅仅考虑IOU，还考虑两个框中心点之间的距离==。如果两个框之间IOU比较大，但是两个框的距离比较大时，可能会认为这是两个物体的框而不会被过滤掉。 其公式如下：
+基于此，==DIOU-NMS就不仅仅考虑IOU，还考虑两个框中心点之间的距离==。
 
-![](https://img-blog.csdnimg.cn/20200610110949759.png)
+![](/assets/dioumns.jpg)
+
+在上图重叠的摩托车检测中，中间的摩托车因为考虑边界框中心点的位置信息，也可以回归出来；因此在重叠目标的检测中，**DIOU_nms**的效果优于**传统的nms**。
 
 
 
@@ -1056,13 +1120,11 @@ NMS是目标检测中必备的后处理步骤，目的是用来去除重复框�
 
 ## 训练曲线
 
-损失函数由位置损失、置信度损失和类别损失组成，其中位置损失是用ciou值来计算的
 
-<img src="./assets/yolov4损失函数.png" style="zoom: 80%;" />
 
 <img src="./assets/yolov4loss.png" style="zoom:67%;" />
 
-训练曲线为每个iter的loss，验证曲线为每次epoch的loss，训练至epoch=24时，云服务器网盘空间不够无法保存训练模型，重新在此基础上继续训练
+训练曲线为每个iter的loss，验证曲线为每次epoch的loss
 
 
 
@@ -1077,6 +1139,8 @@ NMS是目标检测中必备的后处理步骤，目的是用来去除重复框�
 
 
 <center><h1>YOLOv5</h1></center>
+
+
 
 
 
