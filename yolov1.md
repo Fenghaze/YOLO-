@@ -183,7 +183,7 @@ def forward(self, pred_tensor, target_tensor):
 
 ![](./assets/yolov1图例.png)
 
-==标签：tensor[S, S, 30]，初始化为0；制作标签时，仅对有对象的网格赋值==
+==标签：tensor[S, S, 30]，初始化为0；制作标签时，仅对有对象的网格赋GT值==
 
 对于划分的每一个网格，都有对应的标签来进行监督训练，标签由以下两部分组成：
 
@@ -309,7 +309,9 @@ def decoder(pred):
 
 验证集loss曲线在epoch=8上升在epoch=28下降；训练集loss一直在下降
 
-可能原因，模型过拟合；将数据集进行shuffle再训练
+可能原因，模型过拟合
+
+解决办法：将数据集进行shuffle再训练
 
 ## Metrics：计算AP/mAP
 
@@ -660,9 +662,6 @@ if __name__ == '__main__':
 
 - 输出tensor：[n，13，13，125]
 
-- 模型计算量以及参数量
-
-![](./assets/yolov2模型计算量.png)
 
 # YOLOv2损失函数
 
@@ -724,7 +723,7 @@ Github地址：https://github.com/Fenghaze/yolov3
 
 ![](./assets/3类网格.png)
 
-每个网格的任务如下：
+进行三次检测，每个网格的任务如下：
 
 - 预测3个bboxes
 - 计算每个bbox与prior anchor box的偏移量（tx，ty，tw，th）
@@ -794,8 +793,8 @@ def convert(size, box):
         :param target: (batch_size, 250)，每张图片最多有50个检测对象，每个bbox有5个值（x, y, w, h, c），这是dataset根据.txt文件制作的
         :param anchors: (nA, 2)
         :param nA: anchors个数（3）
-        :param nH: 特征图的高（13,26，52）
-        :param nW: 特征图的宽（13,26,52）
+        :param nH: 特征图的高（13、26、52）
+        :param nW: 特征图的宽（13、26、52）
         """
         nB = target.size(0)                                         # batch size
         noobj_mask = torch.ones(nB, nA, nH, nW)						# 用于筛选没有目标的网格
@@ -962,8 +961,7 @@ YOLOv4模型由以下部分组成，共161层：
 CSPNet将feature map拆成两个部分，一部分进行卷积操作，另一部分和上一部分卷积操作的结果进行concate，CSPNet有多种特征融合方式，上图为在ResNet上加上CSPNet后的结构
 
 <hr>
-
-**CSPDarknet53**是在Darknet53的每个大残差块上结合CSPNet，在Darknet53上总共有5个残差块，结合了5个CSPNet，下图为第一个残差块与CSPNet结合的结构
+**CSPDarknet53**是在Darknet53的每个大残差块上结合CSPNet，在Darknet53上总共有5个残差块，结合了5个CSPNet，下图为第一个残差块与CSPNet结合的网络
 
 <img src="./assets/CSPDarknet.png"  />
 
@@ -1136,11 +1134,50 @@ NMS是目标检测中必备的后处理步骤，目的是用来去除重复框�
 
 
 
-
-
 <center><h1>YOLOv5</h1></center>
 
+# YOLOv5模型
 
+
+
+# YOLOv5网络结构
+
+
+
+
+
+# 使用YOLOv5训练自己的数据集
+
+- 数据集项目结构
+
+![](./assets/数据集.png)
+
+- 图片及对应标签
+
+<img src="./assets/yolov5数据集.png" style="zoom:67%;" />
+
+- 使用labelme标注工具获取yolo格式的标签
+
+<img src="./assets/QQ截图20200908102406.png" style="zoom: 80%;" />
+
+- `data.yaml`配置文件：指定图片路径、num_classes和classes_names
+
+  ![](./assets/QQ截图20200908103825.png)
+
+- 修改模型配置文件`yolov5x.yaml`，将nc改为2
+
+口罩数据集，105张用于训练，29张用于验证，对象有两类，一类是mask，一类是no_mask
+
+- 输入图像大小：640x640
+
+- batchsize：2
+
+- epochs：300
+- 使用模型：yolov5x
+
+## 训练曲线
+
+## 检测效果
 
 
 
