@@ -961,9 +961,10 @@ YOLOv4模型由以下部分组成，共161层：
 CSPNet将feature map拆成两个部分，一部分进行卷积操作，另一部分和上一部分卷积操作的结果进行concate，CSPNet有多种特征融合方式，上图为在ResNet上加上CSPNet后的结构
 
 <hr>
+
 **CSPDarknet53**是在Darknet53的每个大残差块上结合CSPNet，在Darknet53上总共有5个残差块，结合了5个CSPNet，下图为第一个残差块与CSPNet结合的网络
 
-<img src="./assets/CSPDarknet.png"  />
+<img src="./assets/CSPDarknet.png" style="zoom:80%;" />
 
 
 
@@ -1001,6 +1002,8 @@ SPP网络用在YOLOv4中是对layer107进行 5×5 、 9×9、 13×13的最大池
 YOLOv4中计算了CIOU损失：
 
 - IOU损失：1与预测框A和真实框B之间交并比的差值，只考虑两个框**重叠的面积**
+
+![](https://www.zhihu.com/equation?tex=IoU+%3D+%5Cfrac%7B%5Cleft%7C+A%5Ccap+B+%5Cright%7C%7D%7B%5Cleft%7C+A%5Ccup+B+%5Cright%7C%7D)
 
 ![](https://www.zhihu.com/equation?tex=L_%7BIOU%7D%3D1-IOU%28A%2CB%29)
 
@@ -1136,15 +1139,31 @@ NMS是目标检测中必备的后处理步骤，目的是用来去除重复框�
 
 <center><h1>YOLOv5</h1></center>
 
-# YOLOv5模型
-
-
-
 # YOLOv5网络结构
 
+提供了4种网络模型：yolov5s，yolov5m，yolov5l，yolov5x
 
+yolov5s网络是yolov5系列中深度最小，特征图的宽度最小的网络。后面的3种都是在此基础上不断加深加宽。下图为yolov5x网络结构
 
+<img src="./assets/yolov5x.png"/>
 
+整体架构与YOLOv4类似，在backbone增加了**Focus结构**
+
+![](./assets/focus结构.png)
+
+YOLOv5默认3x640x640的输入，复制四份，然后通过切片操作将这个四个图片切成了四个3x320x320的切片，接下来使用concat从深度上连接这四个切片，输出为12x320x320，之后再通过卷积核数为32的卷积层，生成32x320x320的输出，最后经过batch_borm 和leaky_relu将结果输入到下一个卷积层
+
+# YOLOv5其他改进
+
+- 自适应锚框：在yolov2-yolov4中，训练自己的数据集时，要预先使用k-means聚类算出初始anchors的大小，但Yolov5中将此功能整进了train代码里，每次训练时自适应的计算不同训练集中的最佳锚框值
+
+- 损失函数：yolov4采用CIOU回归bbox；yolov5采用yolov3中使用的GIOU回归bbox，与IoU只关注重叠区域不同，**GIoU不仅关注重叠区域，还关注其他的非重合区域**，能更好的反映两者的重合度
+
+  ![](https://www.zhihu.com/equation?tex=GIoU+%3D+IoU+-+%5Cfrac%7B%5Cleft%7C++A_%7Bc%7D+-+U+%5Cright%7C%7D%7B%5Cleft%7C+A_%7Bc%7D+%5Cright%7C%7D)
+
+  - 公式解析：先计算两个框的最小闭包区域面积 ![[公式]](https://www.zhihu.com/equation?tex=A_%7Bc%7D) (同时包含了预测框和真实框的最小框的面积)，再计算出IoU，再计算闭包区域中不属于两个框的区域占闭包区域的比重，最后用IoU减去这个比重得到GIoU
+
+- 后处理：yolov5中是GIOU_Loss的基础上采用加权nms的方式进行后处理
 
 # 使用YOLOv5训练自己的数据集
 
@@ -1177,9 +1196,62 @@ NMS是目标检测中必备的后处理步骤，目的是用来去除重复框�
 
 ## 训练曲线
 
+![](./assets/train.png)
+
+<img src="./assets/valid.png"  />
+
+<img src="./assets/metrics.png" style="zoom: 80%;" />
+
 ## 检测效果
 
+![](./yolov5/0_Concern-In-China-As-Mystery-Virus-Spreads_jpg.rf.3135dfc5feab288d76a4ccfd22dfc5bf.jpg)
 
+![](./yolov5/phpM5suKS_jpg.rf.556d78a695ded9fb5f5d1848c85ed2e0.jpg)
 
-# 小结
+# 
 
+**References：**
+
+【YOLOv1】https://arxiv.org/pdf/1506.02640.pdf
+
+https://zhuanlan.zhihu.com/p/70387154
+
+https://blog.csdn.net/c20081052/article/details/80236015
+
+【YOLOv2】https://arxiv.org/pdf/1612.08242.pdf
+
+https://blog.csdn.net/Gentleman_Qin/article/details/84349144
+
+https://blog.csdn.net/mieleizhi0522/article/details/79887066
+
+https://zhuanlan.zhihu.com/p/42861239
+
+【YOLOv3】https://arxiv.org/pdf/1804.02767.pdf
+
+https://blog.csdn.net/haiyangyunbao813/article/details/102712065
+
+https://blog.csdn.net/litt1e/article/details/88907542
+
+【YOLOv4】https://arxiv.org/pdf/2004.10934.pdf
+
+https://blog.csdn.net/weixin_41560402/article/details/106119774
+
+https://zhuanlan.zhihu.com/p/143747206
+
+【YOLOv5】
+
+https://zhuanlan.zhihu.com/p/172121380
+
+https://xugaoxiang.com/2020/06/17/yolov5/
+
+【Metrics】
+
+https://blog.csdn.net/hysteric314/article/details/54093734?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-4.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-4.channel_param
+
+https://blog.csdn.net/like_study_cat/article/details/108117333
+
+【训练策略】
+
+https://blog.csdn.net/quiet_girl/article/details/86138489
+
+https://blog.csdn.net/qq_20412595/article/details/81771790?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-1.channel_param
