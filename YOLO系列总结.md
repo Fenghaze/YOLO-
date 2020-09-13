@@ -7,7 +7,11 @@ Github地址：https://github.com/Fenghaze/yolov1
 
 # YOLOv1核心思想
 
+YOLO：You Only Look Once
+
 ![](./assets/yolov1核心思想.png)
+
+**将一幅图像分成SxS个网格，如果某个object的中心落在这个网格中，则这个网格就负责预测这个object**
 
 ==使用网格划分图片，每个网格进行监督学习的任务==
 
@@ -49,7 +53,9 @@ Github地址：https://github.com/Fenghaze/yolov1
 
 公式解析：
 
-计算了两种损失：当网格没有检测到目标时，只需要计算置信度误差（公式4）；当网格检测到目标时，需要额外计算坐标误差损失和置信度的损失
+按损失类型划分，计算了三种损失：bbox损失、confidence损失和classes损失
+
+按是否有目标来划分，计算了两种损失：当网格没有检测到目标时，只需要计算置信度误差（公式4）；当网格检测到目标时，需要额外计算坐标误差损失和置信度的损失
 
 - （1）计算所有bbox的长宽误差
 - （2）计算所有bbox的宽高误差
@@ -476,7 +482,7 @@ P00524-151929.jpg 2678 295 3073 714 0 2211 558 2618 965 0 2450 1109 2822 1492 0 
 
 # YOLOv1缺点
 
-- 每个网格的bboxes只能预测出一个对象，当同一网格中出现多个对象时，无法精准定位
+- 每个网格的bboxes只能预测出一个对象，理论上一张图片最多能预测SxS个对象，当同一网格中出现多个对象时，无法精准定位
 - 从实验结果来看，NMS后处理有时并没有保留最精确的bbox，出现一个物体有多个bbox的情况
 
 
@@ -489,11 +495,13 @@ YOLOv1使用7x7网格将图片进行划分，每个网格都预测2个bboxes，�
 
 YOLOv1直接对bbox的坐标求回归会导致模型不稳定，其中心点可能会出现在图像任何位置，有可能导致回归过程震荡，甚至无法收敛，尤其是在最开始的几次迭代的时候。大多数不稳定因素产生自预测bbox的中心坐标（x,y）位置的时候
 
+
+
 **改进：**
 
-==YOLOv2使用anchor boxes来预测bounding boxes的偏移量==
+- ==YOLOv2使用anchor boxes来预测bounding boxes的偏移量==，可以使得网络更加容易训练收敛，object定位更加准确
 
-使用了13x13网格将图片进行划分，**引入了RPN的锚点机制（使用k-means学习人工标注的bbox信息，获得5类固定比例的anchor boxes）**后，每个网格根据比例产生5个prior anchor boxes ，再计算出5个bboxes与对应prior anchor box的偏移量，每个bbox预测一组分类概率值，总共需要预测13x13x5=845个bboxes
+- 使用了13x13网格将图片进行划分，**引入了RPN的anchor机制（使用k-means学习人工标注的bbox信息，获得5类固定比例的anchor boxes）**后，每个网格根据比例产生5个prior anchor boxes ，再计算出5个bboxes与对应prior anchor box的偏移量，每个bbox预测一组分类概率值，总共需要预测13x13x5=845个bboxes
 
 
 
@@ -656,7 +664,7 @@ if __name__ == '__main__':
 
 ![](./assets/yolov2网络结构.png)
 
-- 由Draknet19和3层检测网络组成，包含基本的卷积层，最大池化层和1*1卷积；还使用了融合层，学习多尺度特征，共32层
+- 由Draknet19（19个Conv层）和3层检测网络组成；还使用了融合层（passthrough），学习低层的细节特征，共32层
 
 - 输入tensor：[n，3，416，416]
 
@@ -961,7 +969,6 @@ YOLOv4模型由以下部分组成，共161层：
 CSPNet将feature map拆成两个部分，一部分进行卷积操作，另一部分和上一部分卷积操作的结果进行concate，CSPNet有多种特征融合方式，上图为在ResNet上加上CSPNet后的结构
 
 <hr>
-
 **CSPDarknet53**是在Darknet53的每个大残差块上结合CSPNet，在Darknet53上总共有5个残差块，结合了5个CSPNet，下图为第一个残差块与CSPNet结合的网络
 
 <img src="./assets/CSPDarknet.png" style="zoom:80%;" />
@@ -1208,9 +1215,7 @@ YOLOv5默认3x640x640的输入，复制四份，然后通过切片操作将这�
 
 ![](./yolov5/phpM5suKS_jpg.rf.556d78a695ded9fb5f5d1848c85ed2e0.jpg)
 
-# 
-
-**References：**
+#  References
 
 【YOLOv1】https://arxiv.org/pdf/1506.02640.pdf
 
